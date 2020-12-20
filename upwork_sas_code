@@ -1,0 +1,47 @@
+
+/*Now try simulating random intercepts and slopes*/
+data scov(type=COV);
+	input _TYPE_ $ _NAME_ $ S1 S2;
+	datalines;
+COV ran_int 1 0.2
+COV ran_slope .2 1
+MEAN 0 0
+run;
+
+proc simnormal data=scov out=sim_scov numreal=200 seed=124;
+	var ran_int ran_slope;
+run;
+
+/*Try above after you figure out how to get simnormal to read a data set
+Simluating rand intercept and slopes on their own assuming no correlation*/
+data ran_int_slopes;
+	call streaminit(123);
+
+	do i=1 to 200;
+		ran_int=rand("Normal", 0, .2);
+		ran_slope=rand("Normal", 0, .2);
+		output;
+	end;
+run;
+/*Repeat each value 10 times so we get the random effects for each subject*/
+data ran_int_slopes_rep;
+	set ran_int_slopes;
+
+	do week=0 to 9;
+		output;
+	end;
+run;
+/*Then create the model*/
+data multi_data;
+	set ran_int_slopes_rep;
+	y=5 + 4*week + ran_int + ran_slope + week + rand("Normal", 0, .2);
+	output;
+run;
+
+proc mixed data = multi_data;
+	class i;
+	model y = week / solution ddfm = kr;
+	random intercept week / subject= i type = un solution;
+run;
+
+
